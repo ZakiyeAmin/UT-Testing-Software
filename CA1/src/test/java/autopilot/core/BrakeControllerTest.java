@@ -28,8 +28,6 @@ class BrakeControllerTest {
     private static final double LOW_SPEED_KMH = 10.0;
     private static final double NORMAL_SPEED_KMH = 20.0;
     private static final double ABS_TEST_SPEED_KMH = 50.0;
-    private static final double EXPECTED_NORMAL_PRESSURE = 80.0;
-    private static final double EXPECTED_LOW_SPEED_PRESSURE = 100.0;
     private static final int CSV_HEADER_LINES_TO_SKIP = 1;
     private static final String VALID_CASES_RESOURCE = "/autopilot/core/brake-controller-valid-cases.csv";
     private static final String INVALID_CASES_RESOURCE = "/autopilot/core/brake-controller-invalid-cases.csv";
@@ -45,11 +43,13 @@ class BrakeControllerTest {
     }
 
     @ParameterizedTest
-    @CsvFileSource(resources = INVALID_CASES_RESOURCE, numLinesToSkip = CSV_HEADER_LINES_TO_SKIP
-    )
-    void apply_InvalidPressureOrSpeed_ThrowsIllegalArgumentException(double requestedPressure, double speedKmh) {
+    @CsvFileSource(resources = INVALID_CASES_RESOURCE, numLinesToSkip = CSV_HEADER_LINES_TO_SKIP)
+    void apply_InvalidPressureOrSpeed_ThrowsAndPreservesPressure(double requestedPressure, double speedKmh) {
         BrakeController controller = new BrakeController();
+        controller.apply(APPLIED_TEST_PRESSURE, NORMAL_SPEED_KMH, nonParkGear());
+        double previousPressure = controller.getPressure();
         assertThrows(IllegalArgumentException.class, () -> controller.apply(requestedPressure, speedKmh, nonParkGear()));
+        assertEquals(previousPressure, controller.getPressure(), ASSERTION_DELTA);
     }
 
     @ParameterizedTest
@@ -81,50 +81,45 @@ class BrakeControllerTest {
     }
 
     @Test
-    void apply_PressureAtOrBelowAbsThreshold_ResetsPulseSequence() {
+    void apply_PressureBelowAbsThreshold_ResetsPulseSequence() {
         BrakeController controller = new BrakeController();
         GearBox.Gear gear = nonParkGear();
         controller.apply(MAX_BRAKE_PRESSURE, ABS_TEST_SPEED_KMH, gear);
-        double normalPressure = controller.apply(ABS_PRESSURE_THRESHOLD, ABS_TEST_SPEED_KMH, gear);
+        double pressureBelowThreshold = Math.nextDown(ABS_PRESSURE_THRESHOLD);
+        double normalPressure = controller.apply(pressureBelowThreshold, ABS_TEST_SPEED_KMH, gear);
         double nextAbsPressure = controller.apply(MAX_BRAKE_PRESSURE, ABS_TEST_SPEED_KMH, gear);
-        assertEquals(ABS_PRESSURE_THRESHOLD, normalPressure, ASSERTION_DELTA);
+        assertEquals(pressureBelowThreshold, normalPressure, ASSERTION_DELTA);
         assertEquals(ABS_HIGH_PULSE_PRESSURE, nextAbsPressure, ASSERTION_DELTA);
     }
 
     @Test
-    void apply_SpeedAtOrBelowAbsThreshold_ResetsPulseSequence() {
+    void apply_SpeedBelowAbsThreshold_ResetsPulseSequence() {
         BrakeController controller = new BrakeController();
         GearBox.Gear gear = nonParkGear();
         controller.apply(MAX_BRAKE_PRESSURE, ABS_TEST_SPEED_KMH, gear);
-        double normalPressure = controller.apply(MAX_BRAKE_PRESSURE, ABS_SPEED_THRESHOLD_KMH, gear);
+        double speedBelowThreshold = Math.nextDown(ABS_SPEED_THRESHOLD_KMH);
+        double normalPressure = controller.apply(MAX_BRAKE_PRESSURE, speedBelowThreshold, gear);
         double nextAbsPressure = controller.apply(MAX_BRAKE_PRESSURE, ABS_TEST_SPEED_KMH, gear);
         assertEquals(MAX_BRAKE_PRESSURE, normalPressure, ASSERTION_DELTA);
         assertEquals(ABS_HIGH_PULSE_PRESSURE, nextAbsPressure, ASSERTION_DELTA);
     }
 
     @Test
-    void apply_ParkGear_ThrowsIllegalStateException() {
-        BrakeController controller = new BrakeController();
-        assertThrows(IllegalStateException.class,() -> controller.apply(PARK_GEAR_TEST_PRESSURE, NORMAL_SPEED_KMH, GearBox.Gear.P));
-    }
-
-    @Test
-    void apply_NullGear_ThrowsNullPointerException() {
-        BrakeController controller = new BrakeController();
-        assertThrows(NullPointerException.class,() -> controller.apply(PARK_GEAR_TEST_PRESSURE, NORMAL_SPEED_KMH, null));
-    }
-
-    @Test
-    void getPressure_InitialState_ReturnsZero() {
-        BrakeController controller = new BrakeController();
-        assertEquals(ZERO_PRESSURE, controller.getPressure(), ASSERTION_DELTA);
-    }
-
-    @Test
-    void getPressure_AfterApply_ReturnsAppliedPressure() {
+    void apply_ParkGear_ThrowsAndPreservesPressure() {
         BrakeController controller = new BrakeController();
         controller.apply(APPLIED_TEST_PRESSURE, NORMAL_SPEED_KMH, nonParkGear());
-        assertEquals(APPLIED_TEST_PRESSURE, controller.getPressure(), ASSERTION_DELTA);
+        double previousPressure = controller.getPressure();
+        assertThrows(IllegalStateException.class, () -> controller.apply(PARK_GEAR_TEST_PRESSURE, NORMAL_SPEED_KMH, GearBox.Gear.P));
+        assertEquals(previousPressure, controller.getPressure(), ASSERTION_DELTA);
+    }
+
+    @Test
+    void apply_NullGear_ThrowsAndPreservesPressure() {
+        BrakeController controller = new BrakeController();
+        controller.apply(APPLIED_TEST_PRESSURE, NORMAL_SPEED_KMH, nonParkGear());
+        double previousPressure = controller.getPressure();
+        assertThrows(NullPointerException.class, () -> controller.apply(PARK_GEAR_TEST_PRESSURE, NORMAL_SPEED_KMH, null));
+        assertEquals(previousPressure, controller.getPressure(), ASSERTION_DELTA);
     }
 
     @Test
@@ -149,15 +144,23 @@ class BrakeControllerTest {
     }
 
     @Test
-    void emergencyBrake_ParkGear_ThrowsIllegalStateException() {
+    void emergencyBrake_ParkGear_ThrowsAndPreservesState() {
         BrakeController controller = new BrakeController();
-        assertThrows(IllegalStateException.class,() -> controller.emergencyBrake(GearBox.Gear.P));
+        controller.apply(APPLIED_TEST_PRESSURE, NORMAL_SPEED_KMH, nonParkGear());
+        double previousPressure = controller.getPressure();
+        assertThrows(IllegalStateException.class, () -> controller.emergencyBrake(GearBox.Gear.P));
+        assertEquals(previousPressure, controller.getPressure(), ASSERTION_DELTA);
+        assertFalse(controller.isWarningActive());
     }
 
     @Test
-    void emergencyBrake_NullGear_ThrowsNullPointerException() {
+    void emergencyBrake_NullGear_ThrowsAndPreservesState() {
         BrakeController controller = new BrakeController();
+        controller.apply(APPLIED_TEST_PRESSURE, NORMAL_SPEED_KMH, nonParkGear());
+        double previousPressure = controller.getPressure();
         assertThrows(NullPointerException.class, () -> controller.emergencyBrake(null));
+        assertEquals(previousPressure, controller.getPressure(), ASSERTION_DELTA);
+        assertFalse(controller.isWarningActive());
     }
 
     @Test

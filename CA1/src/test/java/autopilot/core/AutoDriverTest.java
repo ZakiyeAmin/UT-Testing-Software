@@ -15,12 +15,11 @@ import java.util.stream.Stream;
 import static org.junit.jupiter.api.Assertions.*;
 
 class AutoDriverTest {
-
     private static final String SENSOR_FAILURE_MESSAGE = "Sensor failed during test";
     private static final String NORMAL_DRIVING_BEHAVIOR = "Normal driving behavior";
     private static final String DRIVE_RESULT_NOT_NULL_MESSAGE = "DriveResult should not be null";
     private static final String CRUISE_MODE_NOT_NULL_MESSAGE = "Cruise mode should not be null";
-    private static final String SAFE_MODE_NOT_A0CTIVATED_MESSAGE = "Safe mode should not be activated";
+    private static final String SAFE_MODE_NOT_ACTIVATED_MESSAGE = "Safe mode should not be activated";
     private static final String BRAKES_NOT_APPLIED_MESSAGE = "Brakes should not be applied";
     private static final String LANE_DEVIATION_TEST_DISPLAY_NAME = "Lane offset {0} meters: expected negative steering = {1}";
     private static final String LANE_DEVIATION_CASES_SOURCE = "laneDeviationCases";
