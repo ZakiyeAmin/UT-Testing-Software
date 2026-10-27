@@ -1,0 +1,9 @@
+speedKmh,distanceMeters
+-1.0,30.0
+NaN,30.0
+Infinity,30.0
+-Infinity,30.0
+50.0,-1.0
+50.0,NaN
+50.0,Infinity
+50.0,-Infinity

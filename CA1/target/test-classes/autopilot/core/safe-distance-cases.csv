@@ -1,0 +1,6 @@
+speedKmh,expectedDistanceMeters
+0.0,0.0
+0.1,0.05
+1.0,0.5
+40.0,20.0
+120.0,60.0
