@@ -19,7 +19,8 @@ class AdaptiveCruiseTest {
     private static final int CSV_HEADER_LINES_TO_SKIP = 1;
     private static final double ACCELERATION_DISTANCE_METERS = 70.0;
     private static final double INITIAL_BRAKING_DISTANCE_METERS = 40.0;
-    private static final double DISTANCE_BELOW_SAFE_METERS = 45.0;
+    private static final double DISTANCE_BELOW_SAFE_METERS = 35.0;
+    private static final double PROPORTIONAL_BRAKE_AMOUNT_BELOW_SAFE = 30.0;
     private static final double SAFE_DISTANCE_METERS = 50.0;
     private static final double DISTANCE_WITHIN_RELEASE_BAND_METERS = 55.0;
     private static final double EMERGENCY_DISTANCE_METERS = 25.0;
@@ -122,7 +123,7 @@ class AdaptiveCruiseTest {
 
     static Stream<Arguments> brakingScenarios() {
         return Stream.of(
-                Arguments.of(DISTANCE_BELOW_SAFE_METERS, new Decision(Mode.BRAKE, MAINTAINED_BRAKING_AMOUNT)),
+                Arguments.of(DISTANCE_BELOW_SAFE_METERS, new Decision(Mode.BRAKE, PROPORTIONAL_BRAKE_AMOUNT_BELOW_SAFE)),
                 Arguments.of(SAFE_DISTANCE_METERS, new Decision(Mode.BRAKE, MAINTAINED_BRAKING_AMOUNT)),
                 Arguments.of(DISTANCE_WITHIN_RELEASE_BAND_METERS, new Decision(Mode.BRAKE, MAINTAINED_BRAKING_AMOUNT))
         );
