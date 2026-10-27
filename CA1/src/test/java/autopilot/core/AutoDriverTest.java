@@ -11,37 +11,42 @@ import org.junit.jupiter.params.provider.Arguments;
 import org.junit.jupiter.params.provider.MethodSource;
 
 import java.util.stream.Stream;
-
-import static org.junit.jupiter.api.Assertions.*;
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 class AutoDriverTest {
 
-    private static final String SENSOR_FAILURE_MESSAGE = "Sensor failed during test";
-    private static final String NORMAL_DRIVING_BEHAVIOR = "Normal driving behavior";
-    private static final String DRIVE_RESULT_NOT_NULL_MESSAGE = "DriveResult should not be null";
-    private static final String CRUISE_MODE_NOT_NULL_MESSAGE = "Cruise mode should not be null";
-    private static final String SAFE_MODE_NOT_A0CTIVATED_MESSAGE = "Safe mode should not be activated";
-    private static final String BRAKES_NOT_APPLIED_MESSAGE = "Brakes should not be applied";
-    private static final String LANE_DEVIATION_TEST_DISPLAY_NAME = "Lane offset {0} meters: expected negative steering = {1}";
+    private static final String NORMAL_DRIVING_BEHAVIOR = "DriveResult should match normal driving behavior";
+    private static final String LANE_DEVIATION_TEST_DISPLAY_NAME = "lane offset = {0} m, expect negative steering = {1}";
     private static final String LANE_DEVIATION_CASES_SOURCE = "laneDeviationCases";
     private static final String POSITIVE_LANE_STEERING_MESSAGE = "Positive lane offset should produce negative steering";
     private static final String NEGATIVE_LANE_STEERING_MESSAGE = "Negative lane offset should produce positive steering";
     private static final String SENSOR_FAILURE_TEST_DISPLAY_NAME = "{0}";
     private static final String SENSOR_FAILURE_CASES_SOURCE = "sensorFailureCases";
+    private static final String SENSOR_FAILURE_MESSAGE = "Sensor failed during test";
     private static final String SPEED_SENSOR_FAILURE_SCENARIO = "Speed sensor failure activates safe mode";
     private static final String OBSTACLE_SENSOR_FAILURE_SCENARIO = "Obstacle sensor failure activates safe mode";
     private static final String EXPECTED_SAFE_MODE_RESULT_MESSAGE = "A sensor failure should produce the expected safe-mode result";
-
 
     private static final double TARGET_SPEED_KMH = 80.0;
     private static final double OBSTACLE_DISTANCE_METERS = 100.0;
     private static final double CENTERED_LANE_OFFSET_METERS = 0.0;
     private static final double POSITIVE_LANE_OFFSET_METERS = 1.0;
-    private static final double NEGATIVE_LANE_OFFSET_METERS = -POSITIVE_LANE_OFFSET_METERS;
-    private static final double NO_BRAKE_PRESSURE = 0.0;
+    private static final double NEGATIVE_LANE_OFFSET_METERS =
+            -POSITIVE_LANE_OFFSET_METERS;
     private static final double NO_STEERING_ANGLE_DEGREES = 0.0;
+    private static final double NO_BRAKE_PRESSURE = 0.0;
     private static final double SAFE_MODE_BRAKE_PRESSURE = 30.0;
-    private static final double DOUBLE_ASSERTION_DELTA = 0.0001;
+
+    // Expected results
+    private static final AutoDriver.DriveResult EXPECTED_NORMAL_DRIVING_RESULT =
+            new AutoDriver.DriveResult(
+                    NO_STEERING_ANGLE_DEGREES,
+                    NO_BRAKE_PRESSURE,
+                    AdaptiveCruise.Mode.HOLD,
+                    false,
+                    false
+            );
 
     private static final AutoDriver.DriveResult EXPECTED_SAFE_MODE_RESULT =
             new AutoDriver.DriveResult(
@@ -52,12 +57,11 @@ class AutoDriverTest {
                     true
             );
 
-
     private SpeedSensor speedSensor;
     private ObstacleSensor obstacleSensor;
     private LaneSensor laneSensor;
-    private AutoDriver autoDriver;
 
+    private AutoDriver autoDriver;
 
     @BeforeEach
     void setUp() {
@@ -72,41 +76,15 @@ class AutoDriverTest {
         );
     }
 
-
     @Test
-    void tick_withValidSensorReadings_returnsNonNullResultAndCruiseMode() {
+    void tick_withValidSensorReadings_returnsExpectedNormalDrivingResult() {
         AutoDriver.DriveResult result =
                 autoDriver.tick(GearBox.Gear.D);
 
-        assertNotNull(
+        assertEquals(
+                EXPECTED_NORMAL_DRIVING_RESULT,
                 result,
-                DRIVE_RESULT_NOT_NULL_MESSAGE
-        );
-
-        assertNotNull(
-                result.cruiseMode(),
-                CRUISE_MODE_NOT_NULL_MESSAGE
-        );
-    }
-
-
-    @Test
-    void tick_withValidSensorReadings_doesNotEnterSafeModeOrApplyBrakes() {
-        AutoDriver.DriveResult result =
-                autoDriver.tick(GearBox.Gear.D);
-
-        assertAll(
-                NORMAL_DRIVING_BEHAVIOR,
-                () -> assertFalse(
-                        result.safeMode(),
-                        SAFE_MODE_NOT_ACTIVATED_MESSAGE
-                ),
-                () -> assertEquals(
-                        NO_BRAKE_PRESSURE,
-                        result.brakePressure(),
-                        DOUBLE_ASSERTION_DELTA,
-                        BRAKES_NOT_APPLIED_MESSAGE
-                )
+                NORMAL_DRIVING_BEHAVIOR
         );
     }
 
@@ -114,8 +92,8 @@ class AutoDriverTest {
     @MethodSource(LANE_DEVIATION_CASES_SOURCE)
     void tick_withLaneDeviation_correctsSteeringTowardLaneCenter(
             double laneOffsetMeters,
-            boolean expectNegativeSteering
-    ) {
+            boolean expectNegativeSteering) {
+
         LaneSensor deviatedLaneSensor = () -> laneOffsetMeters;
 
         AutoDriver driver = createAutoDriver(
@@ -148,8 +126,8 @@ class AutoDriverTest {
             String scenarioName,
             SpeedSensor testSpeedSensor,
             ObstacleSensor testObstacleSensor,
-            LaneSensor testLaneSensor
-    ) {
+            LaneSensor testLaneSensor) {
+
         AutoDriver driver = createAutoDriver(
                 testSpeedSensor,
                 testObstacleSensor,
@@ -166,12 +144,11 @@ class AutoDriverTest {
         );
     }
 
-
     private AutoDriver createAutoDriver(
             SpeedSensor speedSensor,
             ObstacleSensor obstacleSensor,
-            LaneSensor laneSensor
-    ) {
+            LaneSensor laneSensor) {
+
         return new AutoDriver(
                 speedSensor,
                 obstacleSensor,
@@ -194,6 +171,7 @@ class AutoDriverTest {
     }
 
     private static Stream<Arguments> sensorFailureCases() {
+
         SpeedSensor failingSpeedSensor = () -> {
             throw new SensorFailureException(SENSOR_FAILURE_MESSAGE);
         };
