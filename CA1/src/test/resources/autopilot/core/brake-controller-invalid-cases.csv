@@ -1,0 +1,9 @@
+requestedPressure,speedKmh
+-1.0,10.0
+NaN,10.0
+Infinity,10.0
+-Infinity,10.0
+20.0,-1.0
+20.0,NaN
+20.0,Infinity
+20.0,-Infinity
